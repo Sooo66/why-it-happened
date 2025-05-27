@@ -4,4 +4,20 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "loguru>=0.7.3",
+    "newspaper3k>=0.2.8",
+    "regex>=2024.11.6",
+    "requests>=2.32.3",
+    "tqdm>=4.67.1",
+    "trafilatura>=2.0.0",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+indent-width = 2  # 设置缩进为 2 空格
+
+[tool.ruff.format]
+indent-style = "space"  # 使用空格缩进

@@ -1,0 +1,62 @@
+[
+    {
+        "topic_id": 1,
+        "topic": "UK holds Brexit referendum, decides to leave EU",
+        "meta_date": "2016-06",
+        "distractor_words": "EU, election"
+    },
+    {
+        "topic_id": 2,
+        "topic": "COVID-19 pandemic triggers global health crisis",
+        "meta_date": "2020-03",
+        "distractor_words": "flu, vaccine"
+    },
+    {
+        "topic_id": 3,
+        "topic": "Trump supporters storm US Capitol",
+        "meta_date": "2021-01",
+        "distractor_words": "riot, defense"
+    },
+    {
+        "topic_id": 4,
+        "topic": "Former Japanese PM Shinzo Abe assassinated",
+        "meta_date": "2022-07",
+        "distractor_words": "election, violence"
+    },
+    {
+        "topic_id": 5,
+        "topic": "Elon Musk acquires Twitter, implements major reforms",
+        "meta_date": "2022-10",
+        "distractor_words": "acquisition, social"
+    },
+    {
+        "topic_id": 6,
+        "topic": "Trump re-elected as US President",
+        "meta_date": "2024-11",
+        "distractor_words": "Republican, Biden"
+    },
+    {
+        "topic_id": 7,
+        "topic": "South Korean President Yoon Suk-yeol faces impeachment crisis",
+        "meta_date": "2024-12",
+        "distractor_words": "parliament, policy"
+    },
+    {
+        "topic_id": 8,
+        "topic": "7.9 magnitude earthquake in Myanmar's Sagaing Region causes major casualties",
+        "meta_date": "2025-03",
+        "distractor_words": "landslide, flood"
+    },
+    {
+        "topic_id": 9,
+        "topic": "Elon Musk appointed US Department of Government Efficiency Minister",
+        "meta_date": "2025-01",
+        "distractor_words": "Musk, business"
+    },
+    {
+        "topic_id": 10,
+        "topic": "US imposes widespread trade tariffs after Trump's re-election",
+        "meta_date": "2025-03",
+        "distractor_words": "tariff, protectionism"
+    }
+]
