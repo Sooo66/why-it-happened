@@ -2,6 +2,7 @@ import json
 from typing import List, Dict
 from loguru import logger
 
+logger = logger.bind(name=__name__)
 
 def read_file(file_path: str) -> List[Dict]:
     try:
@@ -59,3 +60,86 @@ def convert_to_json_list(input_file: str, output_file: str) -> None:
     except (IOError, json.JSONDecodeError) as e:
         logger.error(f"Failed to convert file {input_file} to JSON list: {str(e)}")
         raise
+
+def read_jsonl(path: str) -> List:
+    with open(path, 'r') as f:
+        data = [json.loads(l) for l in f.readlines()]
+    return data
+
+import uuid
+def set_doc_uuid(data: List[Dict]) -> List[Dict]:
+    """
+    为每个文档设置唯一的 UUID。
+    """
+    try:
+        for d in data:
+            docs = d.get('docs')
+            for doc in docs:
+                if 'uuid' not in doc:
+                    doc['uuid'] = str(uuid.uuid4())
+
+        return data
+    except KeyError:
+        logger.error("The input data does not contain 'docs' key.")
+        raise 
+
+import statistics
+import nltk
+import os
+os.environ['NLTK_DATA'] = '/home/yangmingxuan/nltk_data'
+def get_length_distri(data: List[Dict], key: str="docs") -> List[int]:
+    try:
+        length = []
+        for d in data:
+            docs = d[key]
+            for doc in docs:
+                if 'content' in doc:
+                    token_len = len(nltk.word_tokenize(doc['content']))
+                    length.append(token_len)
+        
+        return length
+    except KeyError:
+        logger.error(f"The input data does not contain '{key}' key.")
+        raise
+
+def cut_length(data: List[Dict], key: str="docs", max_length: int = 1000) -> List[Dict]:
+    """
+    截断文档内容到指定长度。
+    """
+    try:
+        for d in data:
+            docs = d["key"]
+            for doc in docs:
+                if 'content' in doc:
+                    tokens = nltk.word_tokenize(doc['content'])
+                    if len(tokens) > max_length:
+                        doc['content'] = ' '.join(tokens[:max_length])
+        return data
+    except KeyError:
+        logger.error("The input data does not contain 'docs' key.")
+        raise
+
+def set_pairs(raw_data_path: str, rps_data_path: str, x_key: str) -> None:
+    raw_data = read_file(raw_data_path)
+    rps_data = read_jsonl(rps_data_path)
+    
+    uuid2x = {}
+    for rps in rps_data:
+        uuid_str = rps['uuid']
+        x = rps[x_key]
+        uuid2x[uuid_str] = x
+    
+    for d in raw_data:
+        docs = d['docs']
+        for doc in docs:
+            try:
+                uuid = doc['uuid']
+                x = uuid2x[uuid]
+                doc[x_key] = x
+            except KeyError:
+                logger.error("raw_data do not have uuid: {uuid}.")
+    
+        o_path = raw_data_path.split('.')[0] + "_" + x_key + '.jsonl'
+        write_line(d, o_path)
+            
+        

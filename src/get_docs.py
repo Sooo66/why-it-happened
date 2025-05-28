@@ -14,6 +14,7 @@ from charset_normalizer import detect
 import trafilatura
 from newspaper import Article
 from bs4 import BeautifulSoup
+from resiliparse.extract.html2text import extract_plain_text
 
 logger = logger.bind(name=__name__)
 
@@ -71,15 +72,8 @@ def filter_and_sort_docs(doc_str: str, doc_num: int, meta_date: str, do_filter: 
             return now
         
     def filter_func(x, meta_date) -> bool:
-        parsed_date = x.get('parsed_date', None)
-        if not parsed_date:
-            logger.warning("No parsed date found in the news item.")
-            return False
-        try:
-            parsed_date = datetime.strptime(parsed_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
-        except ValueError as e:
-            logger.warning(f"Failed to parse meta_date: {meta_date}. Error: {e}")
-            return False
+        parsed_date = x.get('parsed_date')
+        parsed_date = datetime.strptime(parsed_date, '%Y-%m').replace(tzinfo=pytz.UTC)
 
         left_bound = meta_date - timedelta(days=30 * 6)
         right_bound = meta_date + timedelta(days=30 * 18)
@@ -88,7 +82,7 @@ def filter_and_sort_docs(doc_str: str, doc_num: int, meta_date: str, do_filter: 
     for nw in news:
         date_str = nw.get('date', '')
         parsed_date = parse_date(date_str)
-        nw['parsed_date'] = parsed_date.strftime('%Y-%m-%d')
+        nw['parsed_date'] = parsed_date.strftime('%Y-%m')
     if do_filter:
         try:
             meta_date = datetime.strptime(meta_date, '%Y-%m')
@@ -146,18 +140,31 @@ def _get_archive_link(url: str) -> str:
     except Exception as e:
         logger.warning(f"解析 archive 页面失败：{e}")
         return ""
-
+    
 def fetch_and_parse_url(
     url: str,
     timeout: int = 10,
     output_format: str = 'markdown'
 ) -> str:
     """
-    获取网页并提取正文：
-    1) trafilatura
-    2) newspaper3k
-    3) BeautifulSoup
+    获取网页并提取正文顺序：
+      1) newspaper3k
+      2) trafilatura
+      3) resiliparse
+      4) BeautifulSoup 智能段落提取
     """
+    # —— 1. newspaper3k —— #
+    try:
+        article = Article(url)
+        article.download()
+        article.parse()
+        text = article.text.strip()
+        if len(text) > 20:
+            return text
+    except Exception:
+        logger.warning("newspaper3k 提取失败")
+
+    # —— 获取原始 HTML —— #
     html = _fetch_url(url, timeout)
     if not html:
         archive_link = _get_archive_link(url)
@@ -167,43 +174,63 @@ def fetch_and_parse_url(
             logger.error(f"无法获取 HTML: {url}")
             return ""
 
-    # 1. trafilatura 提取
-    content = trafilatura.extract(
-        html,
-        output_format=output_format,
-        include_comments=False,
-        include_tables=False,
-        include_links=False,
-        favor_precision=True,
-    )
-    if content and len(content.strip()) > 20:
-        return content.strip()
-    logger.info(f"trafilatura 提取失败，切换到 newspaper3k")
-
-    # 2. newspaper3k
+    # —— 2. trafilatura —— #
     try:
-        article = Article(url)
-        article.download()
-        article.parse()
-        if len(article.text.strip()) > 20:
-            return article.text.strip()
+        content = trafilatura.extract(
+            html,
+            output_format=output_format,
+            include_comments=False,
+            include_tables=False,
+            include_links=False,
+            favor_precision=True,
+        )
+        if content and len(content.strip()) > 20:
+            return content.strip()
     except Exception:
-        logger.info(f"newspaper3k 提取失败")
+        logger.warning("trafilatura 提取失败")
 
-    # 3. BeautifulSoup 段落解析
-    paragraphs = [p.get_text(strip=True) for p in BeautifulSoup(html, 'lxml').find_all('p')]
-    joined = "\n\n".join([p for p in paragraphs if p])
+    # —— 3. resiliparse —— #
+    try:
+        rp_content = extract_plain_text(html)
+        if rp_content and len(rp_content.strip()) > 20:
+            return rp_content.strip()
+    except Exception:
+        logger.warning("resiliparse 提取失败")
+
+    # —— 4. BeautifulSoup 智能段落提取 —— #
+    soup = BeautifulSoup(html, 'lxml')
+    # 在可能的正文容器中找出“最重”节点
+    candidates = soup.find_all(['article', 'div', 'section'])
+    best = None
+    max_len = 0
+    for tag in candidates:
+        ps = tag.find_all('p')
+        text_concat = "".join(p.get_text(strip=True) for p in ps)
+        if len(text_concat) > max_len:
+            max_len = len(text_concat)
+            best = tag
+
+    # 如果没找到合适容器，就退回到全页 p 标签
+    container = best if best else soup
+    paragraphs = [
+        p.get_text(strip=True)
+        for p in container.find_all('p')
+        if len(p.get_text(strip=True)) > 30  # 过滤短广告句、版权声明等
+    ]
+    joined = "\n\n".join(paragraphs)
     if len(joined) > 20:
         return joined
 
     logger.error(f"所有提取方法均失败: {url}")
     return ""
 
+
 def main():
     topics = read_file('../data/topics.json')
     for tpc in tqdm(
         topics, desc="Procedding topics", unit="topic"
     ):
+        topic_id = tpc["topic_id"]
         query = tpc["topic"]
         meta_date = tpc["meta_date"]
         query = f"{query}. {meta_date}"
@@ -220,15 +247,16 @@ def main():
             docs, desc="Fetching and parsing documents", unit="doc"
         ):
             url = doc.get('link')
-            content = fetch_and_parse_url(url, timeout=10, output_format='markdown', max_retries=3)
+            content = fetch_and_parse_url(url, timeout=10, output_format='markdown')
             doc['content'] = content
-            time.sleep(random.uniform(0.5, 1.5))
+            time.sleep(random.uniform(1, 1.5))
         docs = list(filter(lambda x: len(x.get('content', '')) > 0, docs))
-        logger.info(f"{query} has {len(docs)} valid documents after content extraction.")
+        logger.info(f"topic_id: {topic_id}, {query} has {len(docs)} valid documents after content extraction.")
         tpc['docs'] = docs
         write_line(tpc, "../data/raw_docs.jsonl")
-    convert_to_json_list("../data/raw_doc.jsonl", "../data/raw_docs.json")
+    convert_to_json_list("../data/raw_docs.jsonl", "../data/raw_docs.json")
 
 if __name__ == "__main__":
-    main()
+    # main()
+    convert_to_json_list("../data/raw_docs.jsonl", "../data/raw_docs.json")
             
