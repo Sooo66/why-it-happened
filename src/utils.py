@@ -142,4 +142,70 @@ def set_pairs(raw_data_path: str, rps_data_path: str, x_key: str) -> None:
         o_path = raw_data_path.split('.')[0] + "_" + x_key + '.jsonl'
         write_line(d, o_path)
             
-        
+def count_timeline_nodes(path: str) -> List[int]:
+    data = read_jsonl(path)
+    cnt = []
+    for d in data:
+        tl = d['timeline']
+        cnt.append(len(tl))
+    
+    return cnt
+
+import uuid
+
+def make_pairs_from_timeline(path: str, raw_data_path: str) -> None:
+    raw_data = read_file(raw_data_path)
+    data = read_jsonl(path)
+
+    for d in data:
+        topic_id = d['topic_id']
+        topic = d['topic']
+        timeline = d['timeline']
+        ori_data = raw_data[topic_id - 1]
+
+        for i in range(1, len(timeline)):
+            event2 = timeline[i]['event']
+            pos2 = timeline[i]['position']
+            event2_context = [doc['summary'] for doc in ori_data['docs'] if doc['position'] in pos2]
+
+            for j in range(i):
+                event1 = timeline[j]['event']
+                pos1 = timeline[j]['position']
+                event1_context = [doc['summary'] for doc in ori_data['docs'] if doc['position'] in pos1]
+
+                new_d = {
+                    'topic_id': topic_id,
+                    'topic': topic,
+                    'uuid': str(uuid.uuid4()),
+                    'event1': event1,
+                    'event1_context': event1_context,
+                    'event2': event2,
+                    'event2_context': event2_context,
+                }
+
+                write_line(new_d, '../data/event_pairs.jsonl')
+
+
+from collections import defaultdict
+
+def get_annotation_res(paths: List[str]) -> None:
+    data_list = [read_jsonl(p) for p in paths]
+    
+    score_sums = defaultdict(list)
+    
+    for data in data_list:
+        for item in data:
+            uuid = item['uuid']
+            score = item['score']
+            score_sums[uuid].append(score)
+
+    averages = [
+        {
+            'uuid': uuid, 
+            'score': int(sum(scores) / len(scores))
+        }
+        for uuid, scores in score_sums.items()
+    ]
+    
+    for d in averages:
+        write_line(d, '../data/pairs_with_score.jsonl')
