@@ -185,6 +185,37 @@ def make_pairs_from_timeline(path: str, raw_data_path: str) -> None:
 
                 write_line(new_d, '../data/event_pairs.jsonl')
 
+def repair_event_pairs(timeline_path, event_pair_path):
+    timelines = read_jsonl(timeline_path)
+    event_pairs = read_jsonl(event_pair_path)
+
+    for tpc in timelines:
+        topic_id = tpc['topic_id']
+        timeline = tpc['timeline']
+        event_order_map = {}
+        event_pos_map = {}
+        for tl in timeline:
+            event_order_map[tl['event']] = tl['event_order']
+            event_pos_map[tl['event']] = tl['position']
+        
+        ent_data = [d for d in event_pairs if d['topic_id'] == topic_id]
+
+        for ent in ent_data:
+            # Create a new dictionary with desired field order
+            new_ent = {
+                'topic_id': ent['topic_id'],
+                'topic': ent['topic'],
+                'uuid': ent['uuid'],
+                'event1': ent['event1'],
+                'event1_order': event_order_map[ent['event1']],
+                'event1_context': ent['event1_context'],
+                'event1_pos': event_pos_map[ent['event1']],
+                'event2': ent['event2'],
+                'event2_order': event_order_map[ent['event2']],
+                'event2_context': ent['event2_context'],
+                'event2_pos': event_pos_map[ent['event2']]  # Fixed typo: 'event2_map' -> 'event2_pos'
+            }
+            write_line(new_ent, '../data/event_pairs.jsonl')
 
 from collections import defaultdict
 
@@ -209,3 +240,31 @@ def get_annotation_res(paths: List[str]) -> None:
     
     for d in averages:
         write_line(d, '../data/pairs_with_score.jsonl')
+
+def get_mcq_score(pred_file: str, gt_file: str):
+    pred = read_jsonl(pred_file)
+    gt = read_jsonl(gt_file)
+
+    # 建立 uuid 到 golder 的映射
+    gt_dict = {d['uuid']: d['golden_answer'] for d in gt}
+    
+    total = 0
+    score = 0
+
+    for p in pred:
+        uuid = p['uuid']
+        if p['answer'] is None:
+            continue
+        pred_ans = set(p['answer'].split(','))
+        gold_ans = set(gt_dict[uuid].split(','))
+
+        total += 1
+        if pred_ans == gold_ans:
+            score += 1
+        elif pred_ans.issubset(gold_ans):
+            score += 0.5
+        else:
+            score += 0
+
+    print(f'Total: {total}, Score: {score}, Accuracy: {score / total:.4f}')
+    return score / total
