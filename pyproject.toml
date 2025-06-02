@@ -15,6 +15,7 @@ dependencies = [
     "regex>=2024.11.6",
     "requests>=2.32.3",
     "resiliparse>=0.15.2",
+    "seaborn>=0.13.2",
     "together>=1.5.8",
     "tqdm>=4.67.1",
     "trafilatura>=2.0.0",

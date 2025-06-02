@@ -32,6 +32,20 @@ def write_file(data: List[Dict], file_path: str) -> None:
             f"Failed to write data to file_path: {file_path}, caused by {str(e)}"
         )
 
+def write_jsonl(data: List[Dict], file_path: str) -> None:
+    try:
+        if not isinstance(data, list):
+            logger.error(f"The data obj is not a list.")
+            raise ValueError
+        with open(file_path, "w") as f:
+            for item in data:
+                json.dump(item, f, ensure_ascii=False)
+                f.write("\n")
+    except IOError as e:
+        logger.error(
+            f"Failed to write data to file_path: {file_path}, caused by {str(e)}"
+        )
+        logger.error(f"Failed to decode json obj in file_path: {file_path}")
 
 def write_line(data: Dict, file_path: str) -> None:
     try:
@@ -268,3 +282,148 @@ def get_mcq_score(pred_file: str, gt_file: str):
 
     print(f'Total: {total}, Score: {score}, Accuracy: {score / total:.4f}')
     return score / total
+
+# 0-20: 0, 20-50: 1, 50-80: 2, 80-100: 3
+def get_score_dist(data: str) -> Dict:
+    data = read_jsonl(data)
+    score_dist = {
+        '0-20': 0,
+        '20-50': 0,
+        '50-80': 0,
+        '80-100': 0
+    }
+    for d in data:
+        score = d['score']
+        if score < 20:
+            score_dist['0-20'] += 1
+        elif score < 50:
+            score_dist['20-50'] += 1
+        elif score < 80:
+            score_dist['50-80'] += 1
+        else:
+            score_dist['80-100'] += 1
+    return score_dist
+
+import random
+def get_verify_data(ori_data: str, score_data: str) -> List[Dict]:
+    ori = read_jsonl(ori_data)
+    score = read_jsonl(score_data)
+
+    uuid2score = {d['uuid']: d['score'] for d in score}
+
+    # 构建 uuid -> ori 映射
+    uuid2ori = {d['uuid']: d for d in ori if d['uuid'] in uuid2score}
+
+    # 初始化分层容器
+    buckets: Dict[str, List[Dict]] = {
+        '0-20': [],
+        '20-50': [],
+        '50-80': [],
+        '80-100': [],
+    }
+
+    # 分配数据到各分层
+    for uuid, sc in uuid2score.items():
+        if uuid not in uuid2ori:
+            continue
+        item = uuid2ori[uuid]
+        item['ori_score'] = sc  # 添加分数到原始数据中
+        if sc < 20:
+            buckets['0-20'].append(item)
+        elif sc < 50:
+            buckets['20-50'].append(item)
+        elif sc < 80:
+            buckets['50-80'].append(item)
+        else:
+            buckets['80-100'].append(item)
+
+    # 从每层中随机抽样20个
+    sampled_data = []
+    for label, data_list in buckets.items():
+        sample_size = min(20, len(data_list))
+        if label == '0-20' or label == '80-100':
+            sample_size = min(10, sample_size)
+        sampled = random.sample(data_list, sample_size)
+        sampled_data.extend(sampled)
+        # print(sampled[0])
+        print(f"{label}: sampled {sample_size} items")
+
+    return sampled_data
+
+def score_to_category(score: int) -> str:
+    if 0 <= score <= 20:
+        return 0
+    elif 20 < score <= 50:
+        return 1
+    elif 50 < score <= 80:
+        return 2
+    elif 80 < score <= 100:
+        return 3
+
+def score_to_category2(score: int) -> int:
+    if 0 <= score <= 50:
+        return 0
+    elif 50 < score <= 100:
+        return 1
+
+import krippendorff
+import numpy as np
+def calc_krippendorff_alpha(paths):
+    all_data = {}
+    for path in paths:
+        data = read_jsonl(path)
+        for d in data:
+            uuid = d['uuid']
+            score = d['score']
+            score = score_to_category(score)
+            # score = score_to_category2(score)
+            if uuid not in all_data:
+                all_data[uuid] = []
+            all_data[uuid].append(score)
+
+    num_raters = len(paths)
+    sorted_uuids = sorted(all_data.keys())
+    full_matrix = [[None for _ in range(num_raters)] for _ in range(len(sorted_uuids))]
+    for i, uuid in enumerate(sorted_uuids):
+        scores = all_data[uuid]
+        for j in range(num_raters):
+            full_matrix[i][j] = scores[j] if j < len(scores) else None
+
+    def filter_matrix(matrix, valid_labels):
+        new_matrix = []
+        for row in matrix:
+            new_row = [s if s in valid_labels else None for s in row]
+            if any(v is not None for v in new_row):  # 至少有一个有效评分
+                new_matrix.append(new_row)
+        return np.array(new_matrix, dtype=float)
+
+    results = {}
+    for label_set in [[0, 1], [1, 2], [2, 3], [0, 3], [0, 1, 2, 3]]:
+    # for label_set in [[0, 1]]:
+        filtered = filter_matrix(full_matrix, label_set)
+        alpha = krippendorff.alpha(
+            reliability_data=filtered.T,
+            level_of_measurement='ordinal',
+            dtype=float
+        )
+        results[str(label_set)] = float(alpha)
+
+    return results
+
+def plt_dist(data: List, bins=30) -> None:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(10, 6))
+
+    # 绘制分布图
+    sns.histplot(data, bins=bins, color='blue', stat='count')
+
+    # 添加标题和标签
+    plt.title('Distribution of Document Lengths')
+    plt.xlabel('Length')
+    plt.ylabel('Density')
+
+    # 显示图形
+    plt.show()

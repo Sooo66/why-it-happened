@@ -9,6 +9,7 @@ from loguru import logger
 from typing import Dict, List, Optional
 import openai
 from utils import read_jsonl, write_line
+from prompt_template import icl_prompt, icl_cot_prompt
 
 logger = logger.bind(name=__name__)
 
@@ -50,23 +51,24 @@ class McqSolver:
         model_name: str,
         input_file: str,
         context_file: str,
-        # output_file: str,
+        prompt: str,
         retry_missing: bool = False,
     ):
         self.model_name = model_name
         self.input_file = input_file
         self.context_file = context_file
-        self.output_file = f'../data/{model_name.split('/')[-1] if model_name.find('/') else model_name}_mcq_fix.jsonl'
+        self.output_file = f'../data/pred_data/{model_name.split('/')[-1] if model_name.find('/') else model_name}_{prompt}_mcq_fix.jsonl'
         self.retry_missing = retry_missing
+        self.prompt = prompt
 
         # determine provider based on model_name prefix
-        if model_name.startswith('gemini'):
+        if model_name.startswith('gemiaani'):
             self.provider = 'google'
-        elif model_name.startswith(('gpt','claude')):
+        elif model_name.startswith(('gpt','claude', 'gemini')):
             self.provider = 'v3'
         elif model_name.startswith('glm'):
             self.provider = 'zhipu'
-        elif model_name.startswith(('deepseek','qwen')):
+        elif model_name.startswith('qwen'):
             self.provider = 'silicon'
         elif model_name.startswith('meta'):
             self.provider = 'together'
@@ -91,12 +93,25 @@ class McqSolver:
                 if uid:
                     self.processed.add(uid)
 
+        if self.prompt.startswith('icl'):
+            global prompt_template
+            prompt_template = icl_prompt if self.prompt == 'icl' else icl_cot_prompt
+            ice_uuid = [
+                'dc232094-0dac-4c8e-8de3-95488ac8f8e0',
+                '2ab218c1-6513-4261-89b9-9795b0805d28',
+                'c7e7d73e-6d12-410f-852d-ed5e52c12d45'
+            ]
+            for _ in ice_uuid:
+                self.processed.add(_)
+
         # load MCQ records
         raw = read_jsonl(self.input_file)
         if self.retry_missing:
             self.data = [r for r in raw if r['uuid'] in self._missing_uuids()]
         else:
             self.data = [r for r in raw if r['uuid'] not in self.processed]
+
+        # random.shuffle(self.data)
 
         # load context data (JSON list of {topic_id, docs: [{summary}]})
         self.context_data: Dict[str, List[str]] = {}
@@ -144,6 +159,17 @@ class McqSolver:
     def _parse_answer(self, text: Optional[str]) -> Optional[str]:
         if not text:
             return None
+        
+        if self.prompt == 'icl_cot':
+            match = re.search(r"Final Answer:\s*\"?([A-D](?:,[A-D])*)", text)
+            if match:
+                answers = match.group(1).split(",")
+                unique = sorted(set(ans.strip().upper() for ans in answers))
+                if not unique:
+                    logger.error(f"No valid option found in response: {text}")
+                    return None
+                return ','.join(unique)
+
         letters = re.findall(r"[A-D]", text.upper())
         if not letters:
             logger.error(f"No valid option found in response: {text}")
@@ -157,24 +183,26 @@ class McqSolver:
             # logger.warning(prompt)
             # import sys; sys.exit()
             answer_text = self._get_response(prompt)
+            # logger.warning(answer_text)
+            # import sys; sys.exit()
             answer = self._parse_answer(answer_text)
             out = {'uuid': rec['uuid'], 'answer': answer}
             write_line(out, self.output_file)
-            time.sleep(random.uniform(2, 2.5))
+            time.sleep(random.uniform(15, 20))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Solve MCQs via LLM with context.")
     parser.add_argument('--model_name', required=True)
     parser.add_argument('--input_file', default='../data/mcq_fix.jsonl')
     parser.add_argument('--context_file', default='../data/raw_docs_events.json')
-    # parser.add_argument('--output_file', default='../data/mcq_answers.jsonl')
+    parser.add_argument('--prompt', default='DIO')
     parser.add_argument('--retry_missing', action='store_true')
     args = parser.parse_args()
     solver = McqSolver(
         model_name=args.model_name,
         input_file=args.input_file,
         context_file=args.context_file,
-        # output_file=args.output_file,
+        prompt=args.prompt,
         retry_missing=args.retry_missing
     )
     solver.run()

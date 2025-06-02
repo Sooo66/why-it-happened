@@ -33,7 +33,7 @@ def get_docs(query: str, doc_num: int = 10):
     }
 
     response = requests.request('POST', url, headers=headers, data=payload)
-    return response.text
+    return json.loads(response.text)
 
 def filter_and_sort_docs(doc_str: str, doc_num: int, meta_date: str, do_filter: bool = True):
     try:
@@ -169,6 +169,7 @@ def fetch_and_parse_url(
     if not html:
         archive_link = _get_archive_link(url)
         if archive_link:
+            time.sleep(10)
             html = _fetch_url(archive_link, timeout)
         if not html:
             logger.error(f"无法获取 HTML: {url}")
@@ -231,12 +232,13 @@ def main():
         topics, desc="Procedding topics", unit="topic"
     ):
         topic_id = tpc["topic_id"]
-        query = tpc["topic"]
-        meta_date = tpc["meta_date"]
-        query = f"{query}. {meta_date}"
+        # query = tpc["topic"]
+        # meta_date = tpc["meta_date"]
+        dis_words = tpc['distractor_words']
+        query = f"{dis_words}"
         logger.info(f"Input query: {query}")
-        docs = get_docs(query, doc_num=10)
-        docs = filter_and_sort_docs(docs, doc_num=10, meta_date=meta_date, do_filter=True)
+        docs = get_docs(query, doc_num=10)['news']
+        # docs = filter_and_sort_docs(docs, doc_num=10, meta_date=meta_date, do_filter=True)
         if docs is not None:
             logger.info(f"Got {len(docs)} documents for topic: {query}")
         else:
@@ -249,14 +251,14 @@ def main():
             url = doc.get('link')
             content = fetch_and_parse_url(url, timeout=10, output_format='markdown')
             doc['content'] = content
-            time.sleep(random.uniform(1, 1.5))
+            time.sleep(random.uniform(10, 11))
         docs = list(filter(lambda x: len(x.get('content', '')) > 0, docs))
         logger.info(f"topic_id: {topic_id}, {query} has {len(docs)} valid documents after content extraction.")
         tpc['docs'] = docs
-        write_line(tpc, "../data/raw_docs.jsonl")
-    convert_to_json_list("../data/raw_docs.jsonl", "../data/raw_docs.json")
+        write_line(tpc, "../data/dis_docs.jsonl")
+    convert_to_json_list("../data/dis_docs.jsonl", "../data/dis_docs.json")
 
 if __name__ == "__main__":
-    # main()
-    convert_to_json_list("../data/raw_docs.jsonl", "../data/raw_docs.json")
+    main()
+    # convert_to_json_list("../data/raw_docs.jsonl", "../data/raw_docs.json")
             

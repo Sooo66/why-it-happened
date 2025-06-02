@@ -1,3 +1,7 @@
 raw_data.json: 使用topic检索得到的原始docs, 带uuid.
 raw_data_cutted.json: 将raw_data.json中的content截断到 3000 token.
 summarized_data.json: 对raw_data.json中的content进行summary.
+
+
+raw_docs_events.json: [docs, events, summary]
+mcq_fix.jsonl: 最新版多选题.
