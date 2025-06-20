@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "google-genai>=1.16.1",
+    "httpx[socks]>=0.28.1",
     "krippendorff>=0.8.1",
     "loguru>=0.7.3",
     "matplotlib>=3.10.3",
