@@ -116,22 +116,14 @@ def get_length_distri(data: List[Dict], key: str="docs") -> List[int]:
         logger.error(f"The input data does not contain '{key}' key.")
         raise
 
-def cut_length(data: List[Dict], key: str="docs", max_length: int = 1000) -> List[Dict]:
-    """
-    截断文档内容到指定长度。
-    """
-    try:
-        for d in data:
-            docs = d["key"]
-            for doc in docs:
-                if 'content' in doc:
-                    tokens = nltk.word_tokenize(doc['content'])
-                    if len(tokens) > max_length:
-                        doc['content'] = ' '.join(tokens[:max_length])
-        return data
-    except KeyError:
-        logger.error("The input data does not contain 'docs' key.")
-        raise
+def cut_length(data: List[Dict],  max_length: int = 1000) -> List[Dict]:
+    for tpc in data:
+        for d in tpc['docs']:
+            if 'content' in d:
+                tokens = nltk.word_tokenize(d['content'])
+                if len(tokens) > max_length:
+                    d.push('ori_content', ' '.join(tokens[:max_length]))
+    return data
 
 def set_pairs(raw_data_path: str, rps_data_path: str, x_key: str) -> None:
     raw_data = read_file(raw_data_path)
