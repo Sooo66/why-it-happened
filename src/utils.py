@@ -119,10 +119,11 @@ def get_length_distri(data: List[Dict], key: str="docs") -> List[int]:
 def cut_length(data: List[Dict],  max_length: int = 1000) -> List[Dict]:
     for tpc in data:
         for d in tpc['docs']:
-            if 'content' in d:
-                tokens = nltk.word_tokenize(d['content'])
-                if len(tokens) > max_length:
-                    d.push('ori_content', ' '.join(tokens[:max_length]))
+            tokens = nltk.word_tokenize(d['content'])
+            if len(tokens) > max_length:
+                d['ori_content'] = ' '.join(tokens[:max_length])
+            else:
+                d['ori_content'] = d['content']
     return data
 
 def set_pairs(raw_data_path: str, rps_data_path: str, x_key: str) -> None:
@@ -145,9 +146,10 @@ def set_pairs(raw_data_path: str, rps_data_path: str, x_key: str) -> None:
             except KeyError:
                 logger.error("raw_data do not have uuid: {uuid}.")
     
-        o_path = raw_data_path.split('.')[0] + "_" + x_key + '.jsonl'
-        write_line(d, o_path)
-            
+        # o_path = raw_data_path.split('.')[0] + "_" + x_key + '.jsonl'
+        # write_line(d, o_path)
+    write_file(raw_data, raw_data_path)
+
 def count_timeline_nodes(path: str) -> List[int]:
     data = read_jsonl(path)
     cnt = []
@@ -419,3 +421,15 @@ def plt_dist(data: List, bins=30) -> None:
 
     # 显示图形
     plt.show()
+
+# def rm_ir_info(in_path: str, out_path: str) -> None:
+#     data = read_file(in_path)
+#     for tpc in data:
+#         docs = tpc['docs']
+#         for doc in docs:
+#             del doc['imageUrl']
+
+
+def pair_dis_docs(dis_path: str, raw_path: str) -> None:
+    data1 = read_file(dis_path)
+    data2 = read_jsonl(raw_path)

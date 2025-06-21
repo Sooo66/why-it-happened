@@ -13,6 +13,8 @@ from prompt_template import icl_prompt, icl_cot_prompt
 
 logger = logger.bind(name=__name__)
 
+random.seed(42)  # for reproducibility
+
 # Prompt template for MCQ solving in English with context
 prompt_template = '''
 Context:
@@ -52,24 +54,26 @@ class McqSolver:
         input_file: str,
         context_file: str,
         prompt: str,
+        context_type: str,
         retry_missing: bool = False,
     ):
         self.model_name = model_name
         self.input_file = input_file
         self.context_file = context_file
-        self.output_file = f'../data/pred_data/{model_name.split('/')[-1] if model_name.find('/') else model_name}_{prompt}_mcq_fix.jsonl'
+        self.output_file = f'../data/pred_data/{context_type}/{model_name.split('/')[-1] if model_name.find('/') else model_name}_{prompt}_mcq_fix.jsonl'
         self.retry_missing = retry_missing
         self.prompt = prompt
+        self.context_type = context_type
 
         # determine provider based on model_name prefix
-        if model_name.startswith('gemiaani'):
+        if model_name.startswith('gemini'):
             self.provider = 'google'
-        elif model_name.startswith(('gpt','claude', 'gemini')):
+        elif model_name.startswith(('gpt','claude')):
             self.provider = 'v3'
         elif model_name.startswith('glm'):
             self.provider = 'zhipu'
-        elif model_name.startswith('qwen'):
-            self.provider = 'silicon'
+        # elif model_name.startswith(('qwen', 'deepseek')):
+        #     self.provider = 'silicon'
         elif model_name.startswith('meta'):
             self.provider = 'together'
         else:
@@ -114,13 +118,24 @@ class McqSolver:
         # random.shuffle(self.data)
 
         # load context data (JSON list of {topic_id, docs: [{summary}]})
-        self.context_data: Dict[str, List[str]] = {}
+        self.context_data = {}
         with open(self.context_file, 'r', encoding='utf-8') as f:
             topics = json.load(f)
         for topic in topics:
             tid = topic.get('topic_id')
-            summaries = [doc.get('summary','') for doc in topic.get('docs', [])]
-            self.context_data[tid] = sorted(set(summaries))
+            # summaries = [doc.get('summary','') for doc in topic.get('docs', [])]
+            # self.context_data[tid] = sorted(set(summaries))
+            if self.context_type == 'smy':
+                summaries = [doc.get('summary', '') for doc in topic.get('docs', [])]
+                self.context_data[tid] = sorted(set(summaries))
+            elif self.context_type == 'ori':
+                summaries = [doc.get('ori_content', '') for doc in topic.get('docs', [])]
+                self.context_data[tid] = sorted(set(summaries))
+            elif self.context_type == 'dis':
+                summaries = [doc.get('summary', '') for doc in topic.get('dis_T', [])] + [doc.get('summary', '') for doc in topic.get('docs', [])]
+                self.context_data[tid] = sorted(set(summaries))
+            random.shuffle(self.context_data[tid])
+            logger.info(f"Loaded {len(self.context_data[tid])} for topic {tid}")
 
     def _missing_uuids(self) -> set:
         missing = set()
@@ -188,14 +203,15 @@ class McqSolver:
             answer = self._parse_answer(answer_text)
             out = {'uuid': rec['uuid'], 'answer': answer}
             write_line(out, self.output_file)
-            time.sleep(random.uniform(15, 20))
+            time.sleep(random.uniform(8, 10))  # rate limiting
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Solve MCQs via LLM with context.")
     parser.add_argument('--model_name', required=True)
     parser.add_argument('--input_file', default='../data/mcq_fix.jsonl')
-    parser.add_argument('--context_file', default='../data/raw_docs_events.json')
+    parser.add_argument('--context_file', default='../data/raw_data.json')
     parser.add_argument('--prompt', default='DIO')
+    parser.add_argument('--context_type', default='smy', choices=['smy', 'ori', 'dis'], help="Type of context to use.")
     parser.add_argument('--retry_missing', action='store_true')
     args = parser.parse_args()
     solver = McqSolver(
@@ -203,6 +219,7 @@ if __name__ == '__main__':
         input_file=args.input_file,
         context_file=args.context_file,
         prompt=args.prompt,
+        context_type=args.context_type,
         retry_missing=args.retry_missing
     )
     solver.run()
