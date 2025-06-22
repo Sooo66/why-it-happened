@@ -12,7 +12,7 @@ from utils import read_jsonl, write_line
 
 logger = logger.bind(name=__name__)
 
-THRESHOLD = 50
+THRESHOLD = 79
 NEG_OPTION = "The information provided is insufficient to determine the cause."
 MAX_PER_EVENT = 5  # max questions per target event
 
@@ -129,8 +129,8 @@ class McqGenerator:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate balanced MCQ data.")
     parser.add_argument('--event_path', default='../data/event_pairs.jsonl')
-    parser.add_argument('--score_path', default='../data/pairs_with_score.jsonl')
-    parser.add_argument('--output_path', default='../data/mcq_fix.jsonl')
+    parser.add_argument('--score_path', default='../data/annotation_data/pairs_with_score.jsonl')
+    parser.add_argument('--output_path', default='../data/mcq_t80.jsonl')
     args = parser.parse_args()
 
     McqGenerator(
