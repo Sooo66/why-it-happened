@@ -60,7 +60,7 @@ class McqSolver:
         self.model_name = model_name
         self.input_file = input_file
         self.context_file = context_file
-        self.output_file = f'../data/pred_data/{context_type}_t80/{model_name.split('/')[-1] if model_name.find('/') else model_name}_{prompt}_mcq_fix.jsonl'
+        self.output_file = f'../data/pred_data/{context_type}_t60_t80/{model_name.split('/')[-1] if model_name.find('/') else model_name}_{prompt}_mcq_fix.jsonl'
         self.retry_missing = retry_missing
         self.prompt = prompt
         self.context_type = context_type
@@ -203,7 +203,7 @@ class McqSolver:
             answer = self._parse_answer(answer_text)
             out = {'uuid': rec['uuid'], 'answer': answer}
             write_line(out, self.output_file)
-            time.sleep(random.uniform(2, 3))  # rate limiting
+            time.sleep(random.uniform(2, 4))  # rate limiting
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Solve MCQs via LLM with context.")

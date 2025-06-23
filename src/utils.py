@@ -264,7 +264,8 @@ def get_mcq_score(pred_file: str, gt_file: str):
         if p['answer'] is None:
             continue
         pred_ans = set(p['answer'].split(','))
-        gold_ans = set(gt_dict[uuid].split(','))
+        # gold_ans = set(gt_dict[uuid].split(','))
+        gold_ans = set(gt_dict.get(uuid, '').split(','))
 
         total += 1
         if pred_ans == gold_ans:
