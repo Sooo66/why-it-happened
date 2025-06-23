@@ -61,7 +61,7 @@ class McqGenerator:
                 low = list({r['event1'] for r in self.records_by_topic[topic]
                             if r['event2'] == target
                             and r['event1_order'] < r['event2_order']
-                            and self.score_map.get(r['uuid'], 0) <= THRESHOLD})
+                            and self.score_map.get(r['uuid'], 0) <= 60})
                 neg_pool = later + low + [NEG_OPTION]
 
                 # determine subset sizes to sample: always include 1, and up to 2 if available
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate balanced MCQ data.")
     parser.add_argument('--event_path', default='../data/event_pairs.jsonl')
     parser.add_argument('--score_path', default='../data/annotation_data/pairs_with_score.jsonl')
-    parser.add_argument('--output_path', default='../data/mcq_t80.jsonl')
+    parser.add_argument('--output_path', default='../data/mcq__t60_t80.jsonl')
     args = parser.parse_args()
 
     McqGenerator(
