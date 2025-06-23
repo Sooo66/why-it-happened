@@ -203,7 +203,7 @@ class McqSolver:
             answer = self._parse_answer(answer_text)
             out = {'uuid': rec['uuid'], 'answer': answer}
             write_line(out, self.output_file)
-            time.sleep(random.uniform(2, 4))  # rate limiting
+            time.sleep(random.uniform(2, 3))  # rate limiting
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Solve MCQs via LLM with context.")
