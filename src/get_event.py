@@ -44,6 +44,8 @@ class EventExtractor:
 
     def _get_response(self, text: str) -> Optional[str]:
         content = self._get_prompt(text)
+        loguru.logger.info(content)
+        import sys; sys.exit()
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
@@ -97,7 +99,7 @@ class EventExtractor:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract core events from documents.")
     parser.add_argument(
-        "--input_file", type=str, default="../data/doc_smy_pairs.jsonl", help="Input JSONL file with documents."
+        "--input_file", type=str, default="../data_bkp/doc_smy_pairs.jsonl", help="Input JSONL file with documents."
     )
     parser.add_argument(
         "--output_file", type=str, default="../data/doc_event_pairs.jsonl", help="Output JSONL file for extracted events."
