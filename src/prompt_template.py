@@ -1,4 +1,4 @@
-icl_prompt = '''
+icl_prompt = """
 Context:
 - British voters elected to leave the European Union. UK Independence Party leader Nigel Farage admitted a key Leave campaign promise about redirecting EU funds to the national health system was inaccurate. Residents of Cornwall worried about losing promised EU subsidies. The British pound plummeted, global stocks tanked, and some voters regretted their decision, with some claiming they thought they were lodging a protest vote and didn't think Brexit would actually happen. Over three million Brits called for a do-over. Critics say Prime Minister David Cameron initiated the referendum due to a political bind. Political scientist David A. Bell argues referendums on technical issues undermine democratic institutions. He also notes referendums can lead to policies that are hard to dislodge and undermine the legitimacy of legislatures. Brexit supporters cast the vote as one of fundamental sovereignty. Martin Kettle argued Brexit should be a referendum on referendums.
 
@@ -91,9 +91,9 @@ D. {option_D}
 
 Please select all correct answers based on the context above. Respond with comma-separated letters only (e.g., "A,B").
 Output: 
-'''
+"""
 
-icl_cot_prompt = '''
+icl_cot_prompt = """
 Context:
 - British voters elected to leave the European Union. UK Independence Party leader Nigel Farage admitted a key Leave campaign promise about redirecting EU funds to the national health system was inaccurate. Residents of Cornwall worried about losing promised EU subsidies. The British pound plummeted, global stocks tanked, and some voters regretted their decision, with some claiming they thought they were lodging a protest vote and didn't think Brexit would actually happen. Over three million Brits called for a do-over. Critics say Prime Minister David Cameron initiated the referendum due to a political bind. Political scientist David A. Bell argues referendums on technical issues undermine democratic institutions. He also notes referendums can lead to policies that are hard to dislodge and undermine the legitimacy of legislatures. Brexit supporters cast the vote as one of fundamental sovereignty. Martin Kettle argued Brexit should be a referendum on referendums.
 
@@ -185,4 +185,4 @@ B. {option_B}
 C. {option_C}
 D. {option_D}
 Output:
-'''
+"""

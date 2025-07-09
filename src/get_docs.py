@@ -18,36 +18,42 @@ from resiliparse.extract.html2text import extract_plain_text
 
 logger = logger.bind(name=__name__)
 
-def get_docs(query: str, doc_num: int = 10):
-    url = 'https://google.serper.dev/news'
 
-    payload = json.dumps({
-        'q': query,
-        # 'gl': 'cn'
-        # 'hl': 'zh-cn',
-        'num': doc_num
-    })
+def get_docs(query: str, doc_num: int = 10):
+    url = "https://google.serper.dev/news"
+
+    payload = json.dumps(
+        {
+            "q": query,
+            # 'gl': 'cn'
+            # 'hl': 'zh-cn',
+            "num": doc_num,
+        }
+    )
     headers = {
-        'X-API-KEY': '997fdb65ef7c85428bdd12d87b9c38730ffb8af7',
-        'Content-Type': 'application/json',
+        "X-API-KEY": "997fdb65ef7c85428bdd12d87b9c38730ffb8af7",
+        "Content-Type": "application/json",
     }
 
-    response = requests.request('POST', url, headers=headers, data=payload)
+    response = requests.request("POST", url, headers=headers, data=payload)
     return json.loads(response.text)
 
-def filter_and_sort_docs(doc_str: str, doc_num: int, meta_date: str, do_filter: bool = True):
+
+def filter_and_sort_docs(
+    doc_str: str, doc_num: int, meta_date: str, do_filter: bool = True
+):
     try:
         data = json.loads(doc_str)
     except json.JSONDecodeError:
         logger.error("Failed to decoding response.")
         return None
-    news = data.get('news', [])
+    news = data.get("news", [])
     if len(news) == 0:
         logger.error("No news found in the response.")
         return None
 
     def parse_date(date_str: str) -> str:
-        timezone = pytz.timezone('UTC')
+        timezone = pytz.timezone("UTC")
         now = datetime.now(timezone)
 
         hours_match = regex.search(r"(\d+) hour(s)? ago", date_str)
@@ -70,24 +76,26 @@ def filter_and_sort_docs(doc_str: str, doc_num: int, meta_date: str, do_filter: 
         else:
             logger.warning(f"There is an unkonwn date format: {date_str}")
             return now
-        
+
     def filter_func(x, meta_date) -> bool:
-        parsed_date = x.get('parsed_date')
-        parsed_date = datetime.strptime(parsed_date, '%Y-%m').replace(tzinfo=pytz.UTC)
+        parsed_date = x.get("parsed_date")
+        parsed_date = datetime.strptime(parsed_date, "%Y-%m").replace(tzinfo=pytz.UTC)
 
         left_bound = meta_date - timedelta(days=30 * 6)
         right_bound = meta_date + timedelta(days=30 * 18)
         return left_bound <= parsed_date <= right_bound
 
     for nw in news:
-        date_str = nw.get('date', '')
+        date_str = nw.get("date", "")
         parsed_date = parse_date(date_str)
-        nw['parsed_date'] = parsed_date.strftime('%Y-%m')
+        nw["parsed_date"] = parsed_date.strftime("%Y-%m")
     if do_filter:
         try:
-            meta_date = datetime.strptime(meta_date, '%Y-%m')
+            meta_date = datetime.strptime(meta_date, "%Y-%m")
         except ValueError:
-            logger.error(f"Invalid meta_date format: {meta_date}. Expected format is 'YYYY-MM'.")
+            logger.error(
+                f"Invalid meta_date format: {meta_date}. Expected format is 'YYYY-MM'."
+            )
             raise
 
         meta_date = meta_date.replace(tzinfo=pytz.UTC)
@@ -96,8 +104,8 @@ def filter_and_sort_docs(doc_str: str, doc_num: int, meta_date: str, do_filter: 
             logger.warning("No news items passed the filter criteria.")
             return None
 
-    news.sort(key=lambda x: x['parsed_date'], reverse=True)
-    
+    news.sort(key=lambda x: x["parsed_date"], reverse=True)
+
     return news[:doc_num]
 
 
@@ -112,6 +120,7 @@ default_headers = {
 session = requests.Session()
 session.headers.update(default_headers)
 
+
 def _fetch_url(url: str, timeout: int = 10) -> str:
     """
     获取 URL 内容，返回文本或空字符串。
@@ -119,8 +128,8 @@ def _fetch_url(url: str, timeout: int = 10) -> str:
     try:
         resp = session.get(url, timeout=timeout)
         resp.raise_for_status()
-        enc = detect(resp.content).get('encoding') or 'utf-8'
-        resp.encoding = enc if enc.lower() != 'ascii' else 'utf-8'
+        enc = detect(resp.content).get("encoding") or "utf-8"
+        resp.encoding = enc if enc.lower() != "ascii" else "utf-8"
         return resp.text
     except requests.RequestException as e:
         logger.warning(f"请求失败：{e}")
@@ -136,15 +145,14 @@ def _get_archive_link(url: str) -> str:
     if not html:
         return ""
     try:
-        return BeautifulSoup(html, 'lxml').select_one('div.TEXT-BLOCK a')['href'] or ""
+        return BeautifulSoup(html, "lxml").select_one("div.TEXT-BLOCK a")["href"] or ""
     except Exception as e:
         logger.warning(f"解析 archive 页面失败：{e}")
         return ""
-    
+
+
 def fetch_and_parse_url(
-    url: str,
-    timeout: int = 10,
-    output_format: str = 'markdown'
+    url: str, timeout: int = 10, output_format: str = "markdown"
 ) -> str:
     """
     获取网页并提取正文顺序：
@@ -199,13 +207,13 @@ def fetch_and_parse_url(
         logger.warning("resiliparse 提取失败")
 
     # —— 4. BeautifulSoup 智能段落提取 —— #
-    soup = BeautifulSoup(html, 'lxml')
+    soup = BeautifulSoup(html, "lxml")
     # 在可能的正文容器中找出“最重”节点
-    candidates = soup.find_all(['article', 'div', 'section'])
+    candidates = soup.find_all(["article", "div", "section"])
     best = None
     max_len = 0
     for tag in candidates:
-        ps = tag.find_all('p')
+        ps = tag.find_all("p")
         text_concat = "".join(p.get_text(strip=True) for p in ps)
         if len(text_concat) > max_len:
             max_len = len(text_concat)
@@ -215,7 +223,7 @@ def fetch_and_parse_url(
     container = best if best else soup
     paragraphs = [
         p.get_text(strip=True)
-        for p in container.find_all('p')
+        for p in container.find_all("p")
         if len(p.get_text(strip=True)) > 30  # 过滤短广告句、版权声明等
     ]
     joined = "\n\n".join(paragraphs)
@@ -227,17 +235,15 @@ def fetch_and_parse_url(
 
 
 def main():
-    topics = read_file('../data/topics.json')
-    for tpc in tqdm(
-        topics, desc="Procedding topics", unit="topic"
-    ):
+    topics = read_file("../data/topics.json")
+    for tpc in tqdm(topics, desc="Procedding topics", unit="topic"):
         topic_id = tpc["topic_id"]
         # query = tpc["topic"]
         # meta_date = tpc["meta_date"]
-        dis_words = tpc['distractor_words']
+        dis_words = tpc["distractor_words"]
         query = f"{dis_words}"
         logger.info(f"Input query: {query}")
-        docs = get_docs(query, doc_num=10)['news']
+        docs = get_docs(query, doc_num=10)["news"]
         # docs = filter_and_sort_docs(docs, doc_num=10, meta_date=meta_date, do_filter=True)
         if docs is not None:
             logger.info(f"Got {len(docs)} documents for topic: {query}")
@@ -245,20 +251,20 @@ def main():
             logger.error(f"No valid documents left for topic: {query}")
             continue
 
-        for doc in tqdm(
-            docs, desc="Fetching and parsing documents", unit="doc"
-        ):
-            url = doc.get('link')
-            content = fetch_and_parse_url(url, timeout=10, output_format='markdown')
-            doc['content'] = content
+        for doc in tqdm(docs, desc="Fetching and parsing documents", unit="doc"):
+            url = doc.get("link")
+            content = fetch_and_parse_url(url, timeout=10, output_format="markdown")
+            doc["content"] = content
             time.sleep(random.uniform(10, 11))
-        docs = list(filter(lambda x: len(x.get('content', '')) > 0, docs))
-        logger.info(f"topic_id: {topic_id}, {query} has {len(docs)} valid documents after content extraction.")
-        tpc['docs'] = docs
+        docs = list(filter(lambda x: len(x.get("content", "")) > 0, docs))
+        logger.info(
+            f"topic_id: {topic_id}, {query} has {len(docs)} valid documents after content extraction."
+        )
+        tpc["docs"] = docs
         write_line(tpc, "../data/dis_docs.jsonl")
     convert_to_json_list("../data/dis_docs.jsonl", "../data/dis_docs.json")
+
 
 if __name__ == "__main__":
     main()
     # convert_to_json_list("../data/raw_docs.jsonl", "../data/raw_docs.json")
-            

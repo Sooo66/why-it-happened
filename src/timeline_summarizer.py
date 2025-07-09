@@ -3,17 +3,21 @@ import ast
 import regex as re
 import loguru
 from typing import Optional, Dict, List, Any
-from utils import read_jsonl, write_line, read_file # Keep read_file for now if it's used elsewhere in utils
+from utils import (
+    read_jsonl,
+    write_line,
+    read_file,
+)  # Keep read_file for now if it's used elsewhere in utils
 from tqdm import tqdm
 import argparse
 import os
 import time
 from loguru import logger
-from llm_base_model import BaseModel # Import BaseModel only
+from llm_base_model import BaseModel  # Import BaseModel only
 
 logger = logger.bind(name=__name__)
 
-DEFAULT_PROMPT_TEMPLATE = '''
+DEFAULT_PROMPT_TEMPLATE = """
 You are an AI expert specializing in timeline summarization and event disambiguation. Your task is to analyze a set of documents, each containing event descriptions, and generate a single, deduplicated, and chronologically accurate timeline of key events.
 Adhere strictly to the following workflow and core principles to complete this task.
 
@@ -51,11 +55,21 @@ Step 3: Key Event Selection & Construction
 {text}
 
 ## Output:
-'''
+"""
 
-class TimelineSummarizer(BaseModel): # Inherit from BaseModel
-    def __init__(self, input_file: str, output_file: str, model_name: str, sleep_time: float, debug: bool):
-        super().__init__(model_name, input_file, output_file, sleep_time, debug) # Call parent constructor
+
+class TimelineSummarizer(BaseModel):  # Inherit from BaseModel
+    def __init__(
+        self,
+        input_file: str,
+        output_file: str,
+        model_name: str,
+        sleep_time: float,
+        debug: bool,
+    ):
+        super().__init__(
+            model_name, input_file, output_file, sleep_time, debug
+        )  # Call parent constructor
         self.prompt_template = DEFAULT_PROMPT_TEMPLATE
         self.data = self._load_data()
 
@@ -89,11 +103,13 @@ class TimelineSummarizer(BaseModel): # Inherit from BaseModel
                 if not event or event in seen:
                     continue
                 seen.add(event)
-                timeline.append({
-                    "event": event,
-                    "event_order": len(timeline) + 1,
-                    "position": sorted(set(pos))
-                })
+                timeline.append(
+                    {
+                        "event": event,
+                        "event_order": len(timeline) + 1,
+                        "position": sorted(set(pos)),
+                    }
+                )
             return timeline
         except Exception as e:
             logger.error(f"Failed to parse timeline: {e}")
@@ -102,35 +118,42 @@ class TimelineSummarizer(BaseModel): # Inherit from BaseModel
 
     def _process_record(self, record: Dict) -> Dict:
         """Pre-processes the record by popping unnecessary keys from docs."""
-        docs = record['docs']
+        docs = record["docs"]
         for doc in docs:
-            doc.pop('imageUrl', None)
-            doc.pop('snippet', None)
-            doc.pop('content', None)
-            doc.pop('link', None)
-            doc.pop('source', None)
-            doc.pop('date', None)
-            doc.pop('ori_content', None)
-        
-        return {
-            'topic_id': record['topic_id'],
-            'topic': record['topic'],
-            'docs': docs
-        }
+            doc.pop("imageUrl", None)
+            doc.pop("snippet", None)
+            doc.pop("content", None)
+            doc.pop("link", None)
+            doc.pop("source", None)
+            doc.pop("date", None)
+            doc.pop("ori_content", None)
+
+        return {"topic_id": record["topic_id"], "topic": record["topic"], "docs": docs}
 
     def _format_output(self, original_record: Dict, parsed_result: Any) -> Dict:
         return {
-            'topic_id': original_record['topic_id'],
-            'topic': original_record['topic'],
-            'timeline': parsed_result if parsed_result else []
+            "topic_id": original_record["topic_id"],
+            "topic": original_record["topic"],
+            "timeline": parsed_result if parsed_result else [],
         }
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract timeline from docs.")
-    parser.add_argument('--input_file', type=str, default='../sample_data/raw_data.json')
-    parser.add_argument('--output_file', type=str, default='../sample_data/timeline.jsonl')
-    parser.add_argument('--model_name', type=str, default='gpt-4.5-preview-2025-02-27')
-    parser.add_argument('--sleep_time', type=float, default=2.0, help="Sleep time between requests.")
-    parser.add_argument('--debug', action='store_true', help="Enable debug mode for more")
+    parser.add_argument(
+        "--input_file", type=str, default="../sample_data/raw_data.json"
+    )
+    parser.add_argument(
+        "--output_file", type=str, default="../sample_data/timeline.jsonl"
+    )
+    parser.add_argument("--model_name", type=str, default="gpt-4.5-preview-2025-02-27")
+    parser.add_argument(
+        "--sleep_time", type=float, default=2.0, help="Sleep time between requests."
+    )
+    parser.add_argument(
+        "--debug", action="store_true", help="Enable debug mode for more"
+    )
     args = parser.parse_args()
-    TimelineSummarizer(args.input_file, args.output_file, args.model_name, args.sleep_time, args.debug).run()
+    TimelineSummarizer(
+        args.input_file, args.output_file, args.model_name, args.sleep_time, args.debug
+    ).run()

@@ -8,12 +8,11 @@ from tqdm import tqdm
 import argparse
 import os
 import time
-from llm_base_model import BaseModel # Import BaseModel only
+from llm_base_model import BaseModel  # Import BaseModel only
 
-loguru.logger = loguru.logger.bind(name=__name__) # Use loguru.logger directly
+loguru.logger = loguru.logger.bind(name=__name__)  # Use loguru.logger directly
 
-DEFAULT_PROMPT_TEMPLATE = \
-'''
+DEFAULT_PROMPT_TEMPLATE = """
 You are an expert in event extraction. Extract up to 5 core, atomic events from the provided text.
 An atomic event is defined as a single, objective action or state change involving identifiable entities, without combining multiple actions or including speculation.
 
@@ -55,20 +54,34 @@ output: ['Former Japanese Prime Minister Shinzo Abe was assassinated at a campai
 
 input: "{text}"
 output:
-'''
+"""
 
-class EventExtractor(BaseModel): # Inherit from BaseModel
-    def __init__(self, input_file: str, output_file: str, model_name: str, sleep_time: float, debug: bool):
-        super().__init__(model_name, input_file, output_file, sleep_time, debug) # Call parent constructor
+
+class EventExtractor(BaseModel):  # Inherit from BaseModel
+    def __init__(
+        self,
+        input_file: str,
+        output_file: str,
+        model_name: str,
+        sleep_time: float,
+        debug: bool,
+    ):
+        super().__init__(
+            model_name, input_file, output_file, sleep_time, debug
+        )  # Call parent constructor
         self.prompt_template = DEFAULT_PROMPT_TEMPLATE
 
     def _load_data(self):
         raw_data = read_file(self.input_file)
-        data = [{'uuid': record['uuid'], 'summary': record['summary']} for d in raw_data for record in d['docs']]
+        data = [
+            {"uuid": record["uuid"], "summary": record["summary"]}
+            for d in raw_data
+            for record in d["docs"]
+        ]
         return data
 
     def _get_prompt(self, record: Dict) -> str:
-        text = record['summary']
+        text = record["summary"]
         return self.prompt_template.format(text=text)
 
     def _parse_response(self, response_text: str) -> Optional[List[str]]:
@@ -91,27 +104,31 @@ class EventExtractor(BaseModel): # Inherit from BaseModel
         return None
 
     def _format_output(self, original_record: Dict, parsed_result: Any) -> Dict:
-        return {
-            'uuid': original_record['uuid'],
-            'events': parsed_result
-        }
+        return {"uuid": original_record["uuid"], "events": parsed_result}
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract core events from documents.")
     parser.add_argument(
-        "--input_file", type=str, default="../sample_data/raw_data.json", help="Input JSONL file with documents."
+        "--input_file",
+        type=str,
+        default="../sample_data/raw_data.json",
+        help="Input JSONL file with documents.",
     )
     parser.add_argument(
-        "--output_file", type=str, default="../sample_data/events.jsonl", help="Output JSONL file for extracted events."
+        "--output_file",
+        type=str,
+        default="../sample_data/events.jsonl",
+        help="Output JSONL file for extracted events.",
     )
     parser.add_argument(
         "--model_name", type=str, default="gemini-2.5-flash", help="Model name to use."
     )
+    parser.add_argument("--sleep_time", type=float, default=2, help="Sleep time.")
     parser.add_argument(
-        "--sleep_time", type=float, default=2, help="Sleep time."
-    )
-    parser.add_argument(
-        "--debug", action='store_true', help="Enable debug mode for more verbose logging."
+        "--debug",
+        action="store_true",
+        help="Enable debug mode for more verbose logging.",
     )
     args = parser.parse_args()
 
@@ -120,6 +137,6 @@ if __name__ == "__main__":
         output_file=args.output_file,
         model_name=args.model_name,
         sleep_time=args.sleep_time,
-        debug=args.debug
+        debug=args.debug,
     )
     event_extractor.run()
