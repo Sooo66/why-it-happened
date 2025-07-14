@@ -1,0 +1,158 @@
+[
+    {
+        "topic_id": 11,
+        "topic": "United States launches trade war against China by imposing tariffs",
+        "meta_date": "2017-02",
+        "distractor_words": "tariff, negotiation"
+    },
+    {
+        "topic_id": 12,
+        "topic": "Huawei unveils HarmonyOS as alternative to Android",
+        "meta_date": "2019-08",
+        "distractor_words": "Android, smartphone"
+    },
+    {
+        "topic_id": 13,
+        "topic": "Facebook changes company name to Meta to focus on the metaverse",
+        "meta_date": "2021-10",
+        "distractor_words": "social, virtual"
+    },
+    {
+        "topic_id": 14,
+        "topic": "TikTok subjected to US national security investigation over data concerns",
+        "meta_date": "2019-11",
+        "distractor_words": "ban, data"
+    },
+    {
+        "topic_id": 15,
+        "topic": "OpenAI releases ChatGPT.",
+        "meta_date": "2022-11",
+        "distractor_words": "AI, chatbot"
+    },
+    {
+        "topic_id": 16,
+        "topic": "Nvidia stock price surges amid generative AI boom",
+        "meta_date": "2023-06",
+        "distractor_words": "GPU, market"
+    },
+    {
+        "topic_id": 17,
+        "topic": "Massive wildfires devastate Southern California due to drought",
+        "meta_date": "2024-09",
+        "distractor_words": "fire, drought"
+    },
+    {
+        "topic_id": 18,
+        "topic": "DeepSeek unveils large language model, igniting AI research discussions",
+        "meta_date": "2025-01",
+        "distractor_words": "AI, research"
+    },
+    {
+        "topic_id": 19,
+        "topic": "Historic winter storm paralyzes Texas, causing massive power outages",
+        "meta_date": "2021-02",
+        "distractor_words": "snow, grid"
+    },
+    {
+        "topic_id": 20,
+        "topic": "Beirut port explosion kills over 200 and devastates Lebanese capital",
+        "meta_date": "2020-08",
+        "distractor_words": "blast, chemical"
+    },
+    {
+        "topic_id": 21,
+        "topic": "Myanmar military stages coup, detains Aung San Suu Kyi and top officials",
+        "meta_date": "2021-02",
+        "distractor_words": "protest, junta"
+    },
+    {
+        "topic_id": 22,
+        "topic": "Iranian General Qasem Soleimani killed by US drone strike in Baghdad",
+        "meta_date": "2020-01",
+        "distractor_words": "drone, Iraq"
+    },
+    {
+        "topic_id": 23,
+        "topic": "Japan begins discharging treated Fukushima nuclear wastewater into ocean",
+        "meta_date": "2023-08",
+        "distractor_words": "radiation, ocean"
+    },
+    {
+        "topic_id": 24,
+        "topic": "Halloween crowd crush in Seoul's Itaewon kills over 150 people",
+        "meta_date": "2022-10",
+        "distractor_words": "crowd, festival"
+    },
+    {
+        "topic_id": 25,
+        "topic": "Yellow Vest movement sparks widespread protests over fuel taxes in France",
+        "meta_date": "2018-11",
+        "distractor_words": "protest, fuel"
+    },
+    {
+        "topic_id": 26,
+        "topic": "Australia experiences its worst bushfire season in modern history",
+        "meta_date": "2019-12",
+        "distractor_words": "bushfire, climate"
+    },
+    {
+        "topic_id": 27,
+        "topic": "UK Prime Minister Liz Truss resigns after economic turmoil",
+        "meta_date": "2022-10",
+        "distractor_words": "leadership, pound"
+    },
+    {
+        "topic_id": 28,
+        "topic": "Wagner Group launches short-lived mutiny against Russian military leadership",
+        "meta_date": "2023-06",
+        "distractor_words": "Prigozhin, coup"
+    },
+    {
+        "topic_id": 29,
+        "topic": "Stablecoin.",
+        "meta_date": "2025-06",
+        "distractor_words": "crypto, blockchain"
+    },
+    {
+        "topic_id": 30,
+        "topic": "Killing of George Floyd by police sparks Black Lives Matter protests worldwide",
+        "meta_date": "2020-05",
+        "distractor_words": "protest, police"
+    },
+    {
+        "topic_id": 31,
+        "topic": "Me Too movement exposes widespread sexual harassment and assault",
+        "meta_date": "2017-10",
+        "distractor_words": "gender, workplace"
+    },
+    {
+        "topic_id": 32,
+        "topic": "Taliban regains control of Afghanistan after US withdrawal",
+        "meta_date": "2021-08",
+        "distractor_words": "Kabul, withdrawal"
+    },
+    {
+        "topic_id": 33,
+        "topic": "Amazon rainforest wildfires ravage millions of acres in Brazil",
+        "meta_date": "2019-08",
+        "distractor_words": "deforestation, environment"
+    },
+    {
+        "topic_id": 34,
+        "topic": "Wildfires destroy thousands of homes in California amid climate crisis",
+        "meta_date": "2020-09",
+        "distractor_words": "climate, emergency"
+    },
+    {
+        "topic_id": 35,
+        "topic": "UBS acquires struggling Credit Suisse during banking crisis",
+        "meta_date": "2023-03",
+        "distractor_words": "merger, crisis"
+    },
+    {
+        "topic_id": 36,
+        "topic": "Silicon Valley Bank collapses, largest US bank failure since 2008",
+        "meta_date": "2023-03",
+        "distractor_words": "bank, failure"
+    }
+]

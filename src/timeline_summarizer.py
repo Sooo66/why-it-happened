@@ -127,6 +127,7 @@ class TimelineSummarizer(BaseModel):  # Inherit from BaseModel
             doc.pop("source", None)
             doc.pop("date", None)
             doc.pop("ori_content", None)
+            doc.pop('uuid', None)
 
         return {"topic_id": record["topic_id"], "topic": record["topic"], "docs": docs}
 
@@ -134,7 +135,7 @@ class TimelineSummarizer(BaseModel):  # Inherit from BaseModel
         return {
             "topic_id": original_record["topic_id"],
             "topic": original_record["topic"],
-            "timeline": parsed_result if parsed_result else [],
+            "answer": parsed_result if parsed_result else [],
         }
 
 

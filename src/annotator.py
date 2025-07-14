@@ -89,6 +89,7 @@ Event 2:
 {event2}
 Context 2:
 {event2_context}
+
 Output:
 '''
 
@@ -106,45 +107,24 @@ class Annotator(BaseModel):
         self.type = type
 
         output_file = (
-            f"../sample_data/annotation_data/{model_name}_causal_score.jsonl"
+            f"../submit_data/annotation_data/{model_name}_causal_score.jsonl"
         )
 
         # 先调用 BaseModel 的构造函数
         super().__init__(model_name, input_file, output_file, sleep_time, debug)
 
-        # 初始化 Annotator 专属字段
-        self.none_uids = set()
-        self.processed_uids = set()
-        if os.path.exists(self.output_file):
-            for rec in read_jsonl(self.output_file):
-                uuid = rec.get("uuid")
-                if uuid:
-                    if rec.get("score") is None:
-                        self.none_uids.add(uuid)
-                    else:
-                        self.processed_uids.add(uuid)
-
         self.data = self._load_data()
-        # self.processed_uids = self._load_processed_uids()
 
     def _load_data(self) -> List[Dict]:
         data = read_jsonl(self.input_file)
-        if self.type == "normal":
-            return data
-        else:  # type == 'none' - process records with None score or unannotated
-            return [
-                x
-                for x in data
-                if x.get("uuid") in self.none_uids
-                or x.get("uuid") not in self.processed_uids
-            ]
+        return data
 
     def _get_prompt(self, record: Dict) -> str:
         def format_context(context_list: List[str]) -> str:
             return "\n".join(f"- {c}" for c in context_list)
 
         prompt = prompt_template.format(
-            topic=record.get("topic", "N/A"),
+            topic=record.get("topic"),
             event1=record["event1"],
             event1_context=format_context(record["event1_context"]),
             event2=record["event2"],
@@ -179,6 +159,9 @@ class Annotator(BaseModel):
         self, original_record: Dict, parsed_result: Optional[int]
     ) -> Dict:
         return {"uuid": original_record.get("uuid"), "reasoning": parsed_result.get("reasoning"), "score": parsed_result.get("score")}
+    
+    def _process_record(self, record):
+        return record
 
 
 if __name__ == "__main__":
@@ -189,7 +172,7 @@ if __name__ == "__main__":
         default="gemini-2.5-flash",
     )
     parser.add_argument(
-        "--input_file", type=str, default="../sample_data/event_pairs.jsonl"
+        "--input_file", type=str, default="../submit_data/event_pairs.jsonl"
     )
     parser.add_argument(
         "--output_file", type=str, default="../data/a.jsonl"

@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Any
 from utils import read_jsonl, write_line
 from prompt_template import icl_prompt, icl_cot_prompt
 from llm_base_model import BaseModel  # Import BaseModel only
+from nltk.tokenize import sent_tokenize, word_tokenize
 
 logger = logger.bind(name=__name__)
 
@@ -100,9 +101,28 @@ class McqSolver(BaseModel):  # Inherit from BaseModel
                     doc.get("ori_content", "") for doc in topic.get("docs", [])
                 ]
             elif self.context_type == "dis":
-                summaries = [
-                    doc.get("summary", "") for doc in topic.get("dis_T", [])
-                ] + [doc.get("summary", "") for doc in topic.get("docs", [])]
+                summaries = []
+
+                for doc in topic.get("dis_T", []):
+                    content = doc.get("content", "")
+                    sentences = sent_tokenize(content)
+                    tokens_so_far = 0
+                    selected_sentences = []
+
+                    for sent in sentences:
+                        tokens_in_sent = len(word_tokenize(sent))
+                        if tokens_so_far + tokens_in_sent > 5000:
+                            break
+                        selected_sentences.append(sent)
+                        tokens_so_far += tokens_in_sent
+
+                    truncated_content = " ".join(selected_sentences)
+                    summaries.append(truncated_content)
+
+                # 原 docs 部分保持不变
+                summaries += [
+                    doc.get("ori_content", "") for doc in topic.get("docs", [])
+                ]
             self.context_data[tid] = sorted(set(summaries))
             random.shuffle(self.context_data[tid])
             logger.info(f"Loaded {len(self.context_data[tid])} for topic {tid}")
@@ -170,7 +190,7 @@ class McqSolver(BaseModel):  # Inherit from BaseModel
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Solve MCQs via LLM with context.")
     parser.add_argument("--model_name", required=True)
-    parser.add_argument("--input_file", default="../sample_data/mcq_w\o_t68.jsonl")
+    parser.add_argument("--input_file", default="../sample_data/mcq_0710.jsonl")
     parser.add_argument("--context_file", default="../sample_data/raw_data.json")
     parser.add_argument("--prompt", default="DIO")
     parser.add_argument(
@@ -180,7 +200,7 @@ if __name__ == "__main__":
         help="Type of context to use.",
     )
     parser.add_argument("--retry_missing", action="store_true")
-    parser.add_argument("--sleep_time", type=float, default=1.0, help="Sleep time between API calls.")
+    parser.add_argument("--sleep_time", type=float, default=0.5, help="Sleep time between API calls.")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode to print prompt and exit.")
     args = parser.parse_args()
     solver = McqSolver(

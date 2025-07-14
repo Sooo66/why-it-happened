@@ -1,7 +1,6 @@
 import json
 import ast
 import regex as re
-import loguru
 from typing import Optional, Dict, Any, List
 from utils import read_jsonl, write_line, read_file
 from tqdm import tqdm
@@ -9,8 +8,9 @@ import argparse
 import os
 import time
 from llm_base_model import BaseModel  # Import BaseModel only
+from loguru import logger
 
-loguru.logger = loguru.logger.bind(name=__name__)  # Use loguru.logger directly
+logger = logger.bind(name=__name__)  # Use loguru.logger directly
 
 DEFAULT_PROMPT_TEMPLATE = """
 You are an expert in event extraction. Extract up to 5 core, atomic events from the provided text.
@@ -78,6 +78,7 @@ class EventExtractor(BaseModel):  # Inherit from BaseModel
             for d in raw_data
             for record in d["docs"]
         ]
+        logger.debug(f"Loaded {len(data)} records from {self.input_file}")
         return data
 
     def _get_prompt(self, record: Dict) -> str:
@@ -85,12 +86,14 @@ class EventExtractor(BaseModel):  # Inherit from BaseModel
         return self.prompt_template.format(text=text)
 
     def _parse_response(self, response_text: str) -> Optional[List[str]]:
+        logger.debug(f"Raw response text: {response_text}")
+        # import sys; sys.exit()
         if not response_text:
             return None
         # extract the first python list in the response
         match = re.search(r"\[.*\]", response_text, re.DOTALL)
         if not match:
-            loguru.logger.error(f"No list found in response: {response_text}")
+            logger.error(f"No list found in response: {response_text}")
             return None
         list_text = match.group(0)
         try:
@@ -99,12 +102,16 @@ class EventExtractor(BaseModel):  # Inherit from BaseModel
                 # ensure strings
                 return [str(e).strip() for e in events][:5]
         except Exception as e:
-            loguru.logger.error(f"Failed to parse events list: {e}")
-            loguru.logger.error(f"List text: {list_text}")
+            logger.error(f"Failed to parse events list: {e}")
+            logger.error(f"List text: {list_text}")
+            return None
         return None
 
     def _format_output(self, original_record: Dict, parsed_result: Any) -> Dict:
-        return {"uuid": original_record["uuid"], "events": parsed_result}
+        return {"uuid": original_record["uuid"], "answer": parsed_result}
+    
+    def _process_record(self, record):
+        return record
 
 
 if __name__ == "__main__":
@@ -139,4 +146,5 @@ if __name__ == "__main__":
         sleep_time=args.sleep_time,
         debug=args.debug,
     )
+    event_extractor.data = event_extractor._load_data()  # Load data before running
     event_extractor.run()

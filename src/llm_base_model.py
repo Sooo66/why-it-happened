@@ -13,7 +13,7 @@ from google import genai  # Import Google GenAI
 from google.genai import types
 
 # Assuming utils.py is in the same directory or accessible via PYTHONPATH
-from utils import read_jsonl, write_line, read_file
+from utils import read_jsonl, write_line, read_file, write_file, write_jsonl
 
 logger = logger.bind(name=__name__)
 
@@ -54,15 +54,18 @@ class BaseModel(ABC):
         self.debug = debug
         self.kwargs = kwargs
 
-        self.client = self._initialize_client()
         self.data = None
-        self.processed_uids = None
+        self.processed_uids = set()
+        self.none_uuid = set()
+
+        self.client = self._initialize_client()
+        self._load_processed_uids()
 
         # random.seed(42)  # for reproducibility, common across all
 
     def _initialize_client(self):
         """Initializes the LLM client based on model_name."""
-        if self.model_name.startswith("gemini") and self.model_name.endswith("flash"):
+        if self.model_name.startswith("gemini") and self.model_name.endswith("2.0"):
             api_key = os.getenv("GENAI_API_KEY", API_KEY["google"])
             return genai.Client(api_key=api_key)
         elif self.model_name.startswith(
@@ -89,24 +92,27 @@ class BaseModel(ABC):
         else:
             raise ValueError(f"Unsupported model name prefix: {self.model_name}")
 
-    def _load_data(self, type: str = "jsonl") -> List[Dict]:
-        if type == 'json':
-            return read_file(self.input_file)
-        elif type == 'jsonl':
-            return read_jsonl(self.input_file)
-        else:
-            raise ValueError(f"Unsupported data type: {type}. Use 'json' or 'jsonl'.")
+    @abstractmethod
+    def _load_data(self) -> List[Dict]:
+        pass
 
     def _load_processed_uids(self) -> set:
         """Loads UIDs of already processed records from the output file."""
-        processed = set()
+        logger.debug(f"here: {self.output_file}")
         if os.path.exists(self.output_file):
+            logger.debug(f"here2")
             for rec in read_jsonl(self.output_file):
                 # Handle different ID fields (uuid for mcq, topic_id for timeline)
                 uid = rec.get("uuid") or rec.get("topic_id")
-                if uid:
-                    processed.add(uid)
-        return processed
+                # ans = rec.get("answer")
+                ans = list(rec.items())[1][1]
+                # logger.debug(f"Processing record: {uid}, answer: {ans}")
+                # import sys; sys.exit()
+                if uid and ans:
+                    self.processed_uids.add(uid)
+                elif uid and not ans:
+                    self.none_uuid.add(uid)
+            logger.info(f"Loaded {len(self.processed_uids)} processed UIDs from {self.output_file}.")
     
     @abstractmethod
     def _get_prompt(self, record: Dict) -> str:
@@ -145,11 +151,20 @@ class BaseModel(ABC):
     def _format_output(self, original_record: Dict, parsed_result: Any) -> Dict:
         """Formats the final output record to be written to the output file."""
         pass
-
+    
+    @abstractmethod
     def _process_record(self, record: Dict) -> Dict:
         """Performs any pre-processing on a record before generating the prompt.
         Can be overridden by subclasses."""
-        return record
+        pass
+    
+    def _update_none_uuid(self, output_data: Dict):
+        data = read_jsonl(self.output_file)
+        for d in data:
+            if d['uuid'] == output_data['uuid']:
+                d['answer'] = output_data['answer']
+                break
+        write_jsonl(data, self.output_file)
 
     def run(self):
         """Main method to run the LLM processing pipeline."""
@@ -158,18 +173,16 @@ class BaseModel(ABC):
             uid = d.get("uuid") or d.get("topic_id")
             if uid and uid not in self.processed_uids:
                 data_to_process.append(d)
-            elif not uid:
-                logger.warning(f"Record missing UUID/Topic ID: {d}")
-                data_to_process.append(d)  # Process if no UID to track
 
         # random.shuffle(data_to_process) # Optional: shuffle for distributed processing
 
         import random
-        random.shuffle(data_to_process)
+        # random.shuffle(data_to_process)
         logger.info(f"Starting processing: {len(data_to_process)} records to process.")
         for rec in tqdm(data_to_process, desc="Processing data"):
-            processed_rec = self._process_record(rec)
-            prompt = self._get_prompt(processed_rec)
+            # processed_rec = self._process_record(rec)
+            rec = self._process_record(rec)
+            prompt = self._get_prompt(rec)
             if self.debug:
                 import sys
 
@@ -179,7 +192,12 @@ class BaseModel(ABC):
             parsed_result = self._parse_response(answer_text)
 
             output_data = self._format_output(rec, parsed_result)
-            write_line(output_data, self.output_file)
+            uid = rec.get("uuid") or rec.get("topic_id")
+            if uid in self.none_uuid:
+                # self._update_none_uuid(output_data)
+                pass
+            else:
+                write_line(output_data, self.output_file)
             time.sleep(
                 random.uniform(self.sleep_time - 0.5, self.sleep_time + 0.5)
             )  # Common rate limiting
